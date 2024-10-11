@@ -1,0 +1,113 @@
+---
+title: "ST550-homework5"
+format: html
+editor: visual
+---
+
+This week we are going to work on a student data, basically using exploratory data analysis to analyze the distribution of students' score and analyze the relationship between students' score and their home life. The data we are going to use are from the UCI machine learning data repository and is about secondary education in two Portugease schools. I actually searched online for the school name "Gabriel Pereira" and found it is actually in the southern area of Portugal, a city called Evora. This city comes with nice districting, neat road design, with residential and commerical in the center and northern part of the city and large factory in the south and eastern outskirts, and is facilitated by a express ring road. Another school named "Mousinho da Silveira" is seated in the mountain area that boarders Spain. The spread of city itself is linear from north to south and there is even a Castle in the city.
+
+# Data import and modification
+
+First I am going to import the data after downloading them. In order to read them from local using relative path, I need to confirm my current working directory. I would guess the wd should be them same with the project folder, but let's see
+
+```{r}
+getwd ()
+```
+
+So I saved the file in the parent folder. I am going to modify the code from the source and load the data in.
+
+```{r}
+library (tidyverse)
+mat<-read.table("../student/student-mat.csv",sep=";",header=TRUE) |> as.tibble()
+por<-read.table("../student/student-por.csv",sep=";",header=TRUE) |> as.tibble()
+mat
+por
+```
+
+Next use inner_join () on the variables they used in their code. inner_join () retains the observation if and only if the "key values" are equal. So using inner_join we are essentially filtering out students that studies both math (mat) and Portuguese (por).
+
+```{r}
+matpor <- inner_join(mat, por, by = c ("school","sex","age","address","famsize","Pstatus","Medu","Fedu","Mjob","Fjob","reason","nursery","internet"))
+head (matpor)
+
+```
+
+There is a warning:
+
+```         
+In inner_join(mat, por, by = c("school", "sex", "age", "address",:
+Detected an unexpected many-to-many relationship between `x` and `y`. 
+Row 79 of `x` matches multiple rows in `y`. 
+Row 79 of `y` matches multiple rows in `x`.
+```
+
+What if we allow the "many-to-many" match?
+
+```{r}
+matpor2 <- inner_join(mat, por, by = c ("school","sex","age","address","famsize","Pstatus","Medu","Fedu","Mjob","Fjob","reason","nursery","internet"), relationship = "many-to-many")
+matpor2
+```
+
+We will proceed with this data set based on this method of inner_join. Now make an inner join on the data set from two schools on all variables other than G1, G2, G3, paid, and absence.
+
+```{r}
+matpor3 <- inner_join(mat, por, by = c ("school","sex","age","address","famsize","Pstatus","Medu","Fedu","Mjob","Fjob","reason","guardian","traveltime","studytime","failures","schoolsup","famsup","activities","nursery","higher","internet","romantic","famrel","goout","Dalc","Walc","health"),relationship = "many-to-many")
+matpor3
+```
+
+From the txt file that comes with the data set we know that the data set "mat" is associated with math score and the data set "por" is associated with Portuguese score. We choose four categorical variables and convert them into factor variables in each tibble. I am interested in school, mother's job, father's job and study time.
+
+```{r}
+mat2 <- mat |> mutate (schoolfct = as.factor (school),
+                       Mjobfct = as.factor (Mjob),
+                       Fjobfct = as.factor (Fjob),
+                       studytimefct = as.factor (studytime)) |> select (-school, -Mjob, -Fjob, -studytime)
+por2 <- por |> mutate (schoolfct = as.factor (school),
+                       Mjobfct = as.factor (Mjob),
+                       Fjobfct = as.factor (Fjob),
+                       studytimefct = as.factor (studytime)) |> select (-school, -Mjob, -Fjob, -studytime)
+matpor4 <- matpor3 |> mutate (schoolfct = as.factor (school),
+                       Mjobfct = as.factor (Mjob),
+                       Fjobfct = as.factor (Fjob),
+                       studytimefct = as.factor (studytime)) |> select (-school, -Mjob, -Fjob, -studytime)
+
+str(mat2 [,30:33])
+str (por2 [,30:33])
+str (matpor4 [,36:39])
+```
+
+Now we saw the new tibbles are with the four character variables transformed into factor variables.
+
+# Summarize the data
+
+## Categorical variables
+
+BaseR has a good function to generate contigency table called table(). We will first use this function to generate a one-way, a two-way and a three-way contingency table.
+
+```{r}
+table(matpor4$schoolfct)
+```
+This one-way contingency table showed basically the number of students from each school in the combined data set. For example, there are 287 students in the GP high school.
+
+```{r}
+table (matpor4$Mjobfct, matpor4$studytimefct)
+```
+This two-way contingency table showed the students' weekly study time and their mom's job. For example, it showed there are 7 students whose moms work as civic servants had weekly study time more than 10 hours.
+
+```{r}
+table (matpor4$Mjobfct, matpor4$studytimefct, matpor4$Fjobfct)
+```
+In addition, this three-way contiency table showed the weekly study time and their mom's job, on the condition of their father's job. You could see there are 4 students whose both parents work as civic servants study more than 10 hours a week.
+
+Next we create a two-way contigency table using group_by() and summarize(). For example we could do school and study time.
+
+```{r}
+matpor4 |> group_by(schoolfct, studytimefct) |> summarize (count = n())
+```
+
+We could use the function pivot_wider() to transform the table into a table()-style like output.
+
+```{r}
+matpor4 |> group_by(schoolfct, studytimefct) |> summarize (count = n()) |> pivot_wider(names_from = schoolfct, values_from = count)
+```
+
