@@ -153,9 +153,135 @@ numericsummary <- matpor4 |>
                      .names = "{.fn}_{.col}"))
 ```
 
-We could subset the data only to show the stats related with the variable "age"
+We could subset the data only to show the stats related with the variable "age", "absences_mat", "G3_mat"
 
 ```{r}
 numericsummary [1:5]
+numericsummary [6:10]
+numericsummary [11:15]
 ```
+
+It is better if we summarize the statistics of numeric variables according to different groups of sample students. We could grouping the numeric variables according to their Father's job.
+
+```{r}
+numericsummarygroup <- matpor4 |>
+  rename (absences_mat = absences.x, absences.por = absences.y, G3_mat = G3.x, G3_por = G3.y) |> 
+  group_by(Fjobfct) |>
+  drop_na (Fjobfct) |>
+  summarize (across (c(age, absences_mat, G3_mat), .fns = list ("mean" = mean, "median" = median), names = "{.fn}_{.col}"))
+numericsummarygroup
+```
+
+From the table we could tell students whose fathers are teachers have a higher mean value for math score, and at home dads tend to have kids with less absence for math class. Now we would like to add another grouping factor: school.
+
+```{r}
+numericsummarygroup <- matpor4 |>
+  rename (absences_mat = absences.x, absences.por = absences.y, G3_mat = G3.x, G3_por = G3.y) |> 
+  group_by(Fjobfct, schoolfct) |>
+  drop_na (Fjobfct, schoolfct) |>
+  summarize (across (c(age, absences_mat, G3_mat), .fns = list ("mean" = mean, "median" = median), names = "{.fn}_{.col}"))
+numericsummarygroup
+```
+In general students tend to have lower math score and higher absences at MS high compared with GP high for math. However, if the students have teacher fathers then there is minimal differences in their average math score, although median math score is lower at MS high. Now that we could create a correlation matrix for all the numeric variables, including age, absences, G1/G2/G3 for math and Portuguese.
+
+```{r}
+matpor4rename <- matpor4 |>
+  rename (absences_mat = absences.x, absences_por = absences.y, 
+          G3_mat = G3.x, G3_por = G3.y, G1_mat = G1.x, G1_por = G1.y, G2_mat = G2.x, G2_por = G2.y)
+matpor4rename |> select (age, absences_mat, absences_por, G1_mat, G1_por, G2_mat, G2_por, G3_mat, G3_por) |>
+  cor (method = "pearson") |> round (2)
+```
+
+In the correlation coefficient table, we could see the absences between the two classes are highly correlated, and absences are generally negatively correlated with scores. Regarding testing score, they are very highly correlated, even in different subjects. Probably the students who had higher score in one subject tend to not have a lower score in another subject as well. It would be interested to see how other variables contribute to the score of the two subjects as well.
+Next we will illustrate how different values of categorical variables affect the distribution of numeric variables. Specifically in this data set, we will be looking at how weekly study time affect the distribution of final score and math and Portuguese, using kernel density plot, histogram and box plot.
+
+First let's plot a kernel density plot and a histogram
+
+```{r}
+ggplot (matpor4rename, aes (x = G3_mat, fill = studytimefct)) +
+  geom_density (alpha = 0.5) +
+  xlab ("Final score for math")
+```
+```{r}
+ggplot (matpor4rename, aes (x = G3_mat, fill = studytimefct)) +
+ geom_histogram (alpha = 0.5, position = "identity", bins = 15)+
+  xlab ("Final score for math")
+```
+
+Because there are very different number of students in each group of study time, so clearly density plot is a better choice. The data suggested the majority of students studying 2-5 hours weekly had a slightly lower score at Math.
+Here we plot the blox plot.
+```{r}
+ggplot (matpor4rename, (aes (x = studytimefct, y = G3_mat, fill = studytimefct))) +
+  geom_boxplot() +
+  geom_jitter(width = 0.1, alpha = 0.6) +
+  xlab ("Time spent on study") +
+  ylab ("Final score for math")
+```
+Following the same method, we could make plots for the Portuguese score.
+
+```{r}
+ggplot (matpor4rename, aes (x = G3_por, fill = studytimefct)) +
+  geom_density (alpha = 0.5) +
+  xlab ("Final score for Portuguese")
+```
+```{r}
+ggplot (matpor4rename, aes (x = G3_por, fill = studytimefct)) +
+ geom_histogram (alpha = 0.5, position = "identity", bins = 15)+
+  xlab ("Final score for Portuguese")
+```
+
+```{r}
+ggplot (matpor4rename, (aes (x = studytimefct, y = G3_por, fill = studytimefct))) +
+  geom_boxplot() +
+  geom_jitter(width = 0.1, alpha = 0.6) +
+  xlab ("Time spent on study") +
+  ylab ("Final score for Portuguese")
+```
+
+It is clearly from the kernel density plot and the box plot that students who study 5-10 hours weekly had the highest score for Portuguese, although there seemed to be a single person who study more than 10 hours a week scored really high on Portuguese.
+
+We further explore the relationship between the 1st period grade and the final grade on math, with different levels of study time per week.
+
+```{r}
+g <- ggplot (matpor4rename, aes (x = G1_mat, y = G3_mat, color = studytimefct)) +
+  geom_point(size = 3) +
+  geom_jitter(width = 0.1, alpha = 0.6, size = 3) +
+  xlab ("Math first period grade") +
+  ylab ("Math final grade")
+```
+
+There are a bunch of students who got zero for the final grade. Probably that is due to no show up. When exploring relations, better remove those points. In addition, there seemed to be strong relationship in each group of study time. We could add a trend line on this.
+
+```{r}
+matpor4rename1 <- matpor4rename |> filter (G3_mat > 0)
+g1 <- matpor4rename1 |> ggplot (aes (x = G1_mat, y = G3_mat, color = studytimefct)) +
+  geom_point(size = 3) +
+  geom_jitter(width = 0.1, alpha = 0.6, size = 3) +
+  xlab ("Math first period grade") +
+  ylab ("Math final grade")+ 
+  geom_smooth(method = lm)
+g1
+```
+
+From this plot we could see the correlation between the 1st and the final math score is not changed solely by the time students spent on studying. Then how about different career choices by their fathers?
+
+```{r}
+g2 <- matpor4rename1 |> ggplot (aes (x = G1_mat, y = G3_mat)) +
+  geom_point(size = 3) +
+  geom_jitter(width = 0.1, alpha = 0.6, size = 3) +
+  xlab ("Math first period grade") +
+  ylab ("Math final grade")+ 
+  geom_smooth(method = lm)
+g2 + facet_wrap (~Fjobfct)
+```
+
+So the correlation between 1st and final math score is pretty strong, but having a father working in the health industry seemed to be more likely to improve your math results. Now we would like to see the effect of each combination of the two categorical variables on the relationship of 1st vs final Math test.
+
+```{r}
+g2 + facet_grid(studytimefct ~ Fjobfct) +
+  ylim (c(4,24))
+```
+
+This visualization offers a broader view of both factors on score improvement. First, it looks like the length of study per week affect the 1st test score of math, espeically when the dad works for the public sector. Probably that reflects the students' study habits. Second it looks like studying for 5-10 hours per week might results in better improvement of score, especially if you have a health worker dad or a teacher dad. All in all, it is an excellent data set to explore the students' performance with their family conditions.
+
 
