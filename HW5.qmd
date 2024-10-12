@@ -8,7 +8,7 @@ This week we are going to work on a student data, basically using exploratory da
 
 # Data import and modification
 
-First I am going to import the data after downloading them. In order to read them from local using relative path, I need to confirm my current working directory. I would guess the wd should be them same with the project folder, but let's see
+First I am going to import the data after downloading them. In order to read them from local using relative path, I need to confirm my current working directory. I would guess the wd should be them same with the project folder, but let's see.
 
 ```{r}
 getwd ()
@@ -97,9 +97,23 @@ This two-way contingency table showed the students' weekly study time and their 
 ```{r}
 table (matpor4$Mjobfct, matpor4$studytimefct, matpor4$Fjobfct)
 ```
-In addition, this three-way contiency table showed the weekly study time and their mom's job, on the condition of their father's job. You could see there are 4 students whose both parents work as civic servants study more than 10 hours a week.
+In addition, this three-way contingency table showed the weekly study time and their mom's job, on the condition of their father's job. You could see there are 4 students whose both parents work as civic servants study more than 10 hours a week.
 
-Next we create a two-way contigency table using group_by() and summarize(). For example we could do school and study time.
+Next we will create a conditional two-way table using filter () function and subsetting separately.
+
+```{r}
+matpor4subset <- matpor4|> filter (Fjobfct == "health")
+table (matpor4subset$Mjobfct, matpor4subset$studytimefct)
+```
+Above is the filter data method
+
+```{r}
+jbsttmtable <- table (matpor4$Mjobfct, matpor4$studytimefct, matpor4$Fjobfct)
+jbsttmtable[,,2]
+```
+The above is the subsetting method.
+
+Next we create a two-way contingency table using group_by() and summarize(). For example we could do school and study time.
 
 ```{r}
 matpor4 |> group_by(schoolfct, studytimefct) |> summarize (count = n())
@@ -109,5 +123,39 @@ We could use the function pivot_wider() to transform the table into a table()-st
 
 ```{r}
 matpor4 |> group_by(schoolfct, studytimefct) |> summarize (count = n()) |> pivot_wider(names_from = schoolfct, values_from = count)
+```
+
+Lastly we will create a bar graph showed the number of students with different mothers' job. 
+
+```{r}
+ggplot (data = matpor4, aes (x = Mjobfct)) +
+  geom_bar() +
+  labs (x="Mother's job")
+```
+
+We then create a side-by-side bar graph showing the number of students with different study time and mother's job.
+
+```{r}
+ggplot (data = matpor4, aes (x = studytimefct, fill = Mjobfct)) +
+  geom_bar(position = "dodge") +
+  labs (x="Weekly study time level")
+```
+
+## Numeric variables
+
+First we want to find the center and spread to characterize the numeric variable in the combined data set: age, absence and G3. Need to remember for the combined data set, there are two variable for G3, one for math, another one for Portuguese.
+
+
+```{r}
+numericsummary <- matpor4 |> 
+  rename (absences_mat = absences.x, absences.por = absences.y, G3_mat = G3.x, G3_por = G3.y) |> 
+  summarize (across (c(age, absences_mat, G3_mat),                                                                       .fns = list ("mean" = mean, "median" = median, "var" = var, "sd" = sd, "IQR" = IQR), 
+                     .names = "{.fn}_{.col}"))
+```
+
+We could subset the data only to show the stats related with the variable "age"
+
+```{r}
+numericsummary [1:5]
 ```
 
